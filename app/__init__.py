@@ -1,4 +1,3 @@
-from ast import Str
 from unittest.mock import patch
 from flask import Flask, request, jsonify, g
 from flask_sqlalchemy import SQLAlchemy
@@ -29,11 +28,10 @@ def create_app(config_filename):
                 return jsonify(common.falseReturn(msg="未登录", code=401))
             else:
                 payload = common.decode_auth_token(auth_header)
-                # return payload
                 if (isinstance(payload, str)): 
                     return jsonify(common.falseReturn(msg=payload, code=401))
-                g.user_id = payload.id
-                g.login_time = payload.login_time
+                g.user_id = payload.get('data').get('id')
+                g.login_time = payload.get('data').get('login_time')
             return None
 
     from app.users.model import db
