@@ -44,10 +44,10 @@ class Auth():
             if (Users.check_password(Users, userInfo.password, password)):
                 try:
                     login_time = int(time.time())
+                    print('login_time', login_time)
                     userInfo.login_time = login_time
-                    userInfo.mobile = 123
-                    userInfo.update
-                    Users.update(Users)
+                    # userInfo.email = "1234@test.com"
+                    Users.update(Users, userInfo)
                     token = self.encode_auth_token(userInfo.user_id, login_time)
                     return jsonify(common.trueReturn(token, '登录成功'))
                 except Exception as err:
@@ -62,10 +62,15 @@ class Auth():
         """
         user = Users.get(Users, g.user_id)
         if (user is None):
-            result = common.falseReturn('', '找不到该用户信息', status=401)
+            result = common.falseReturn('', '找不到该用户信息', code=401)
         else:
             if (user.login_time == g.login_time):
-                result = common.trueReturn(user, '请求成功')
+                result = common.trueReturn(
+                    {
+                        "email": user.email,
+                    },
+                    '请求成功'
+                )
             else:
-                result = common.falseReturn('', 'Token已更改，请重新登录获取', status=401)
+                result = common.falseReturn('', 'Token已更改，请重新登录获取', code=401)
         return result
