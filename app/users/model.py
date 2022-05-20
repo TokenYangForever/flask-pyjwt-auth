@@ -1,4 +1,3 @@
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -6,15 +5,16 @@ from app import db
 
 class Users(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(250),  unique=True, nullable=False)
-    username = db.Column(db.String(250),  unique=True, nullable=False)
-    password = db.Column(db.String(250))
+    email = db.Column(db.String(255),  unique=True)
+    username = db.Column(db.String(45),  unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
     login_time = db.Column(db.Integer)
-
-    def __init__(self, username, password, email):
+    user_id = db.Column(db.String(255), nullable=False)
+    def __init__(self, username, password, email, user_id):
         self.username = username
         self.password = password
         self.email = email
+        self.user_id = user_id
 
     def __str__(self):
         return "Users(id='%s')" % self.id
@@ -25,8 +25,11 @@ class Users(db.Model):
     def check_password(self, hash, password):
         return check_password_hash(hash, password)
 
-    def get(self, id):
-        return self.query.filter_by(id=id).first()
+    # def getByName(self, username):
+        # return db.session.query(self).filter(Users.username.like(username)).first()
+
+    def get(self, user_id):
+        return self.query.filter_by(user_id=user_id).first()
 
     def add(self, user):
         db.session.add(user)
