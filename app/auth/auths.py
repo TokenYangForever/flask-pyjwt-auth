@@ -1,5 +1,5 @@
 import jwt, datetime, time
-from flask import jsonify
+from flask import jsonify, g
 from app.users.model import Users
 from .. import config
 from .. import common
@@ -15,7 +15,7 @@ class Auth():
         """
         try:
             payload = {
-                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=0, seconds=10),
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(days=0, seconds=60000),
                 'iat': datetime.datetime.utcnow(),
                 'iss': 'ken',
                 'data': {
@@ -31,27 +31,6 @@ class Auth():
         except Exception as e:
             return e
 
-    @staticmethod
-    def decode_auth_token(auth_token):
-        """
-        验证Token
-        :param auth_token:
-        :return: integer|string
-        """
-        try:
-            # payload = jwt.decode(auth_token, app.config.get('SECRET_KEY'), leeway=datetime.timedelta(seconds=10))
-            # 取消过期时间验证
-            payload = jwt.decode(auth_token, config.SECRET_KEY, options={'verify_exp': False})
-            if ('data' in payload and 'id' in payload['data']):
-                return payload
-            else:
-                raise jwt.InvalidTokenError
-        except jwt.ExpiredSignatureError:
-            return 'Token过期'
-        except jwt.InvalidTokenError:
-            return '无效Token'
-
-
     def authenticate(self, username, password):
         """
         用户登录，登录成功返回token，写将登录时间写入数据库；登录失败返回失败原因
@@ -63,38 +42,30 @@ class Auth():
             return jsonify(common.falseReturn('', '找不到用户'))
         else:
             if (Users.check_password(Users, userInfo.password, password)):
-                login_time = int(time.time())
-                userInfo.login_time = login_time
-                Users.update(Users)
-                token = self.encode_auth_token(userInfo.id, login_time)
-                return jsonify(common.trueReturn(token.decode(), '登录成功'))
+                try:
+                    login_time = int(time.time())
+                    userInfo.login_time = login_time
+                    userInfo.mobile = 123
+                    userInfo.update
+                    Users.update(Users)
+                    token = self.encode_auth_token(userInfo.user_id, login_time)
+                    return jsonify(common.trueReturn(token, '登录成功'))
+                except Exception as err:
+                    return jsonify(common.trueReturn(str(err), '登录失败'))
             else:
                 return jsonify(common.falseReturn('', '密码不正确'))
 
-    def identify(self, request):
+    def identify(self):
         """
         用户鉴权
         :return: list
         """
-        auth_header = request.headers.get('Authorization')
-        if (auth_header):
-            auth_tokenArr = auth_header.split(" ")
-            if (not auth_tokenArr or auth_tokenArr[0] != 'JWT' or len(auth_tokenArr) != 2):
-                result = common.falseReturn('', '请传递正确的验证头信息')
-            else:
-                auth_token = auth_tokenArr[1]
-                payload = self.decode_auth_token(auth_token)
-                if not isinstance(payload, str):
-                    user = Users.get(Users, payload['data']['id'])
-                    if (user is None):
-                        result = common.falseReturn('', '找不到该用户信息')
-                    else:
-                        if (user.login_time == payload['data']['login_time']):
-                            result = common.trueReturn(user.id, '请求成功')
-                        else:
-                            result = common.falseReturn('', 'Token已更改，请重新登录获取')
-                else:
-                    result = common.falseReturn('', payload)
+        user = Users.get(Users, g.user_id)
+        if (user is None):
+            result = common.falseReturn('', '找不到该用户信息', status=401)
         else:
-            result = common.falseReturn('', '没有提供认证token')
+            if (user.login_time == g.login_time):
+                result = common.trueReturn(user, '请求成功')
+            else:
+                result = common.falseReturn('', 'Token已更改，请重新登录获取', status=401)
         return result
